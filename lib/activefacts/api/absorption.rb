@@ -1,0 +1,6 @@
+require 'activefacts/api'
+require 'activefacts/api/absorption/vocabulary'
+require 'activefacts/api/absorption/instance'
+require 'activefacts/api/absorption/value'
+require 'activefacts/api/absorption/entity'
+require 'activefacts/api/absorption/constellation'
