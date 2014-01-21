@@ -4,12 +4,12 @@ require 'rake'
 require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
-  gem.name = "activefacts-absorption"
-  gem.homepage = "http://github.com/cjheath/activefacts-absorption"
+  gem.name = "activefacts-composition"
+  gem.homepage = "http://github.com/cjheath/activefacts-composition"
   gem.license = "MIT"
-  gem.summary = "A fact-based data model DSL and API"
+  gem.summary = "Object composition for the fact-based data model DSL and API"
   gem.description = %q{
-ActiveFacts API Verbalisation provides absorption (object clustering) support for the activefacts-api
+ActiveFacts Composition provides composition (object clustering) support for the activefacts-api
 }
   gem.email = "clifford.heath@gmail.com"
   gem.authors = ["Clifford Heath"]
@@ -74,7 +74,7 @@ Rake::RDocTask.new do |rdoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
 
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "activefacts-absorption #{version}"
+  rdoc.title = "activefacts-composition #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end

@@ -1,79 +1,42 @@
-= activefacts-absorption
+= activefacts-composition
 
-ActiveFacts API absorption provides object clustering support for the activefacts-api.
+ActiveFacts Composition provides object composition support for the activefacts-api.
 
 * http://dataconstellation.com/ActiveFacts/
 
 == INSTALL:
 
-* sudo gem install activefacts-absorption
+* sudo gem install activefacts-composition
 
 == API:
 
-  class Vocabulary
-    attr_reader :all_absorption
-  end
-
-  class Absorption
-    has_one :name
-    has_many :all_prime_object
-  end
-
-  class
-  class PrimeObject
-    has_one :object_type
-    has_one :absorption
-  end
-
-  class AbsorbedObject
-    has_one :parent, :class => AbsorbedObject
-    has_one :role, :mandatory => true
-  end
-
-  class AbsorbedValue < AbsorbedObject
-    has_one :name
-  end
-
-  class AbsorbedEntity < AbsorbedObject
-  end
-
-  class ObjectType
-
 == BACKGROUND:
 
-An <em>absorption</em> of a fact-based schema is a set of instructions for
-constructing composite objects from atomic objects. An absorption may
-be in first normal form, meaning that no composite object absorbs any
+A <em>composition</em> of a fact-based schema is a set of instructions for
+constructing composite objects from atomic objects. A composition may be
+in first normal form, meaning that no composite object absorbs any
 one-to-many relationship. Or it may not; a non-first-normal-form absorption
 may have arrays of objects nested to any level under the top object.
 
-Each object type is either <em>prime</em> (its instances are top objects),
-or is absorbed into one or more other object types. When a prime object
-type is referenced from another, only its identifying values are absorbed.
-This encodes a reference to the prime instance instead of the contents.
+Each object type is either a <em>composite</em> (its instances are top
+objects), or is absorbed into one or more other object types. When a
+composite object type is referenced from another, only its identifying
+values are absorbed.  This encodes a reference to the instance instead
+of the contents.
 
-The absorption extension is used for creating relational tuples, XML
-and JSON objects.
+This composition API is used for creating all kinds of schemas, including
+relational, object-oriented, star schemas, XML and JSON.
 
-When both absorption and change-tracking (dirty flags) is in effect,
-the absorption indicates how to propagate dirty flags from the seat of
+When both composition and change-tracking (dirty flags) is in effect,
+the composition indicates how to propagate dirty flags from the seat of
 a change.
-
-    absorb :as => :name {
-      absorb :role_1, :as => :arrrole1
-      absorb :all_role_2, :as => nil {
-	absorb :nested_role_3, :as => :nr3 {
-	  absorb :double_nested_role_4
-	}
-	absorb :nested_role_5
-      }
-    }
 
 == STATUS:
 
-Stub version that supports the API but doesn't do anything yet.
+Creates a composition object (implementing the basic API) but doesn't
+yet provide flattening and some other features.
 
-== Contributing to activefacts-absorption
+== Contributing to activefacts-composition
  
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
 * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it
@@ -85,5 +48,5 @@ Stub version that supports the API but doesn't do anything yet.
 
 == Copyright
 
-Copyright (c) 2013 Clifford Heath. See LICENSE.txt for further details.
+Copyright (c) 2014 Clifford Heath. See LICENSE.txt for further details.
 
