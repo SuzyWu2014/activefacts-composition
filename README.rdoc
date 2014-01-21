@@ -8,6 +8,67 @@ ActiveFacts API absorption provides object clustering support for the activefact
 
 * sudo gem install activefacts-absorption
 
+== API:
+
+  class Vocabulary
+    attr_reader :all_absorption
+  end
+
+  class Absorption
+    has_one :name
+    has_many :all_prime_object
+  end
+
+  class
+  class PrimeObject
+    has_one :object_type
+    has_one :absorption
+  end
+
+  class AbsorbedObject
+    has_one :parent, :class => AbsorbedObject
+    has_one :role, :mandatory => true
+  end
+
+  class AbsorbedValue < AbsorbedObject
+    has_one :name
+  end
+
+  class AbsorbedEntity < AbsorbedObject
+  end
+
+  class ObjectType
+
+== BACKGROUND:
+
+An <em>absorption</em> of a fact-based schema is a set of instructions for
+constructing composite objects from atomic objects. An absorption may
+be in first normal form, meaning that no composite object absorbs any
+one-to-many relationship. Or it may not; a non-first-normal-form absorption
+may have arrays of objects nested to any level under the top object.
+
+Each object type is either <em>prime</em> (its instances are top objects),
+or is absorbed into one or more other object types. When a prime object
+type is referenced from another, only its identifying values are absorbed.
+This encodes a reference to the prime instance instead of the contents.
+
+The absorption extension is used for creating relational tuples, XML
+and JSON objects.
+
+When both absorption and change-tracking (dirty flags) is in effect,
+the absorption indicates how to propagate dirty flags from the seat of
+a change.
+
+    absorb :as => :name {
+      absorb :role_1, :as => :arrrole1
+      absorb :all_role_2, :as => nil {
+	absorb :nested_role_3, :as => :nr3 {
+	  absorb :double_nested_role_4
+	}
+	absorb :nested_role_5
+      }
+    }
+
 == STATUS:
 
 Stub version that supports the API but doesn't do anything yet.
