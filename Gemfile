@@ -1,15 +1,18 @@
 #source 'https://rubygems.org'
 source 'http://rubygems.railscamp.org'
 
-gem 'rake', :group => [:development, :test]
-gem 'activefacts-api', '>0.9.8'
+gem 'rake', '~>10.0', :group => [:development, :test]
+gem 'activefacts-api', '~> 0.9', '> 0.9.8'
 
 group :development do
-  gem 'jeweler'
-  gem 'rspec', '~>2.6.0'
-  gem 'ruby-debug', :platforms => [:mri_18]
-  gem 'debugger', :platforms => [:mri_19, :mri_20]
-  gem 'pry', :platforms => [:jruby, :rbx]
+  gem 'ruby-debug', '~> 0.10', :platforms => [:mri_18]
+  gem 'debugger', '~> 1.6', :platforms => [:mri_19, :mri_20]
+  gem 'pry', '~> 0.9', :platforms => [:jruby, :rbx]
+
+  gem 'rspec', '~> 2.3', '~> 2.3.0'
+  gem 'bundler', '~> 1.0', '~> 1.0.0'
+  gem 'jeweler', '~> 1.5', '~> 1.5.2'
+  gem 'rdoc', '~> 2.4', '>= 2.4.2'
 end
 
 group :test do
