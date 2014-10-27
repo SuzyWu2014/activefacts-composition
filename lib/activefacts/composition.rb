@@ -16,21 +16,7 @@ module ActiveFacts
     attr_reader :name
     attr_reader :members
 
-    def inspect
-      "#{name}"
-    end
-
-    def tree
-      "#{name || vocabulary.name}\n"+
-      members.map do |m|
-	m.tree
-      end * "\n\n"
-    end
-
-    def traversals
-      []
-    end
-
+    # Each absorption corresponds to one level of nesting
     class Absorption
       attr_reader :vocabulary		# Vocabulary
       attr_reader :parent		# Absorption
@@ -38,21 +24,19 @@ module ActiveFacts
       attr_reader :object_type		# Class (EntityType or ValueType)
       attr_reader :traversals		# Array[role_name (or Role?)] (at most one non-unique role)
       attr_reader :members		# => Enumerable(Absorption)
+      attr_reader :options		# Options hash
+
+    private
+      def add_member absorption
+      end
+
+    public
 
       def inspect
-	"#{parent ? parent.inspect+'.' : ''}#{object_type.basename}"
+	"Absorption #{vocabulary.name||'<null>'}.#{object_type.basename} as #{name} with #{members.size} members"
       end
 
-      def tree
-	(
-	  [ "#{indent}#{name || vocabulary.name}" ] +
-	  members.map do |m|
-	    m.tree
-	  end
-	) * "\n"
-      end
-
-      def initialize(vocabulary, parent, name, object_type)
+      def initialize(vocabulary, parent, name, object_type, options = {})
 	@vocabulary = vocabulary
 	@parent = parent
 	@name = name
@@ -60,25 +44,40 @@ module ActiveFacts
 	@traversals = []
 	@members = []
 	@exclude_role = nil
+	@options = options
       end
 
-      # Every Absorption is either an absorbed value or is a Composite
-      def is_composite
-	members && members.size > 0
-      end
-
+      # Include just this role (and its contents if selected by the block)
       def include role_name, *a, &b
 	hash = a.last.is_a?(Hash) ? a.pop : {}
-	role = @object_type.roles(role_name)
-	puts "#{indent}Including #{hash[:as] || role.name}" # with options #{hash.inspect}
-	klass = (c = role.counterpart) ? c.object_type : @vocabulary.object_type('ImplicitBooleanValueType')
-	absorption = Absorption.new(@vocabulary, self, hash[:as] || role_name.to_s, klass)
-	absorption.traversals << role
-	absorption.contents(role, *a, &b)
+	raise "include only allows role name and options" if a.size > 0
+	options = hash.clone
+	name = options.has_key?(:as) ? options.delete(:as) : role_name.to_s
+
+#	puts "#{indent}Including #{name} with options #{options.inspect}"
+
+	role = @object_type.all_role(role_name)
+	klass = role.unary? ? @vocabulary.object_type('ImplicitBooleanValueType') : role.counterpart.object_type
+	absorption = Absorption.new(@vocabulary, self, name, klass, options)
 	members << absorption
+	absorption.traversals << role
+
+	absorption.contents(role, *a, &b) unless role.unary?
       end
 
+      # Like include, but with an anonymous Absorption that will not nest
+      def flatten(role_name, *a, &b)
+	hash = a.last.is_a?(Hash) ? a.pop : {}
+	hash[:as] = nil
+	a.push(hash)
+	name = role_name.to_s
+
+	include(role_name, *a, &b)
+      end
+
+      # Recursively absorb all functional roles, or all FRs under the given role (and their contents if selected by the block)
       def absorb role_name = nil, *a, &b
+	raise hell if a.size > 0
 	if role_name
 	  include role_name, *a do
 	    all_functionals
@@ -89,36 +88,57 @@ module ActiveFacts
 	end
       end
 
+      # Include all has_one roles except identifying roles
       def all_functionals
-	candidates = @object_type.roles.keys
+	candidates = @object_type.all_role.keys
 	exclude = @object_type.respond_to?(:identifying_role_names) ? @object_type.identifying_role_names : []
-	exclude << @exclude_role.counterpart.name if @exclude_role
+	exclude = exclude + [@exclude_role.counterpart.name] if @exclude_role
 	functional_role_names = (candidates-exclude).reject do |role_name|
-	    role = @object_type.roles(role_name)
+	    role = @object_type.all_role(role_name)
 	    !role.unique || ((c = role.counterpart) && c.unique)
 	  end
+	namespace = self
+	while namespace.name == nil
+	  namespace = namespace.parent
+	end
 	functional_role_names.each do |role_name|
-	  puts "#{indent}Functional #{role_name}"
+#	  puts "#{indent}Functional #{role_name}"
+	  next if namespace.has_role role_name
 	  include role_name
 	end
       end
 
-      def contents(exclude_role = nil, *a, &b)
-	# Include the identifying roles of an EntityType:
-	if @object_type.respond_to?(:identifying_roles)
-	  # puts "including #{@object_type.identifying_role_names.inspect}"
-	  # Include the identifying_roles of @object_type
-	  @object_type.identifying_roles.each do |role|
-	    next if role == false   ## WTF? Constraint has an identifying_role of "false"
-	    next if (exclude_role == role.counterpart)	# Skip implicit source role
-	    puts "#{indent}Including identifying #{role.name}"
-	    klass = (c = role.counterpart) ? c.object_type : @vocabulary.object_type('ImplicitBooleanValueType')
-	    absorption = Absorption.new(@vocabulary, self, role.name, klass)
-	    absorption.traversals << role
-	    absorption.contents role
-	    members << absorption
-	  end
+      def has_role role_name
+	members.detect do |member|
+	  member.name == role_name
 	end
+      end
+
+      # Include the identifying roles of an EntityType:
+      def include_identifiers(exclude_role)
+	namespace = self
+	while namespace.name == nil
+	  namespace = namespace.parent
+	end
+	# Include the identifying_roles of @object_type
+	@object_type.identifying_roles.each do |role|
+	  next if role == false   ## WTF? Constraint has an identifying_role of "false"
+	  next if (exclude_role == role.counterpart)	# Skip implicit source role
+	  next if namespace.has_role role.name
+
+	  # REVISIT: Skip if this role has already been absorbed (object_type is a supertype)
+
+#	  puts "#{indent}Including identifying #{role.name}"
+	  klass = (c = role.counterpart) ? c.object_type : @vocabulary.object_type('ImplicitBooleanValueType')
+	  absorption = Absorption.new(@vocabulary, self, role.name, klass)
+	  absorption.traversals << role
+	  absorption.contents role
+	  members << absorption
+	end
+      end
+
+      def contents(exclude_role = nil, *a, &b)
+	include_identifiers exclude_role if @object_type.is_entity_type
 
 	if b
 	  old_exclude = @exclude_role
@@ -129,7 +149,20 @@ module ActiveFacts
       end
 
       def indent
-	parent ? parent.indent+'  ' : ''
+	parent ? parent.indent+(name ? '  ' : '..') : ''
+      end
+
+      def inspect
+	"#{parent ? parent.inspect+'.' : ''}#{object_type.basename}"
+      end
+
+      def tree
+	(
+	  [ "#{indent}#{name || (parent ? '(anonymous)' : vocabulary.name)}" ] +
+	  members.map do |m|
+	    m.tree
+	  end
+	) * "\n"
       end
     end
 
@@ -148,9 +181,13 @@ module ActiveFacts
     def composite(sym, *a, &b)
       klass = @vocabulary.object_type(sym)
       raise "Object Type #{sym} is not known" unless klass
+
       hash = a.last.is_a?(Hash) ? a.pop : {}
-      puts "#{indent}Compositing #{klass.basename}" #  with options #{hash.inspect}
-      absorption = Absorption.new(@vocabulary, self, sym.to_s, klass)
+      options = hash.clone
+      name = options.has_key?(:as) ? options.delete(:as) : sym
+
+#      puts "#{indent}Compositing #{klass.basename} as #{name} with options #{options.inspect}"
+      absorption = Absorption.new(@vocabulary, self, name.to_s, klass, options)
       absorption.contents(nil, *a, &b)
       members << absorption
     end
@@ -167,11 +204,26 @@ module ActiveFacts
       ''
     end
 
+    def inspect
+      "#{name}"
+    end
+
+    def tree
+      "#{name || vocabulary.name}\n"+
+      members.map do |m|
+	m.tree
+      end * "\n\n"
+    end
+
+    def traversals
+      []
+    end
+
 private
     # Return a hash of every role used in this Composition (as key) with value false
     def unmarked_roles
       vocabulary.object_type.values.inject({}) do |h, o|
-	o.roles.map do |k,v|
+	o.all_role_transitive.map do |k,v|
 	  h[v] = false
 	end
 	h
