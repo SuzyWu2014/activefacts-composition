@@ -42,7 +42,8 @@ module ActiveFacts
 	@name = name
 	if @object_type == []
 	  # An array type, which has no object_type of its own
-	  @object_type = parent.object_type
+	  @role = parent.object_type.all_role(@name)
+	  @object_type = nil
 	elsif @object_type
 	  @name = @object_type.basename
 	else
@@ -51,11 +52,15 @@ module ActiveFacts
 
 	  # Create a parent wrapper around non-unique roles:
 	  unless @role.unique
-	    parent = Absorption.new(vocabulary, parent, name, [])
+	    as = options.has_key?(:as) ? {:as => options.delete(:as)} : {}  # Awkward, maybe there's a better way.
+	    parent = Absorption.new(vocabulary, parent, name, [], as)
+	    parent.traversals << @role
 	    @name = options.delete(:each) || @object_type.basename.snakecase
+	    @role = nil
+	  else
+	    @traversals << @role
 	  end
 
-	  traversals << @role
 	end
 	@name = options.delete(:as) if options.has_key?(:as)
 
@@ -70,7 +75,8 @@ module ActiveFacts
 
 	absorption = Absorption.new(@vocabulary, self, role_name, nil, hash)
 
-	absorption.contents(absorption.role, *a, &b) unless absorption.role.unary?
+	role = absorption.role || absorption.parent.role
+	absorption.contents(role, *a, &b) unless role.unary?
       end
 
       # Like nest, but with an anonymous Absorption that will not create a named nesting
@@ -81,7 +87,8 @@ module ActiveFacts
 
 	absorption = Absorption.new(@vocabulary, self, role_name, nil, hash)
 
-	absorption.contents(absorption.role, *a, &b) unless absorption.role.unary?
+	role = absorption.role || absorption.parent.role
+	absorption.contents(role, *a, &b) unless role.unary?
       end
 
       # Recursively absorb all functional roles, or all FRs under the given role (and their contents if selected by the block)
@@ -138,7 +145,8 @@ module ActiveFacts
 
 #	  puts "#{indent}Including identifying #{role.name}"
 	  absorption = Absorption.new(@vocabulary, self, role.name, nil)
-	  absorption.contents absorption.role
+	  role = absorption.role || absorption.parent.role
+	  absorption.contents role
 	end
       end
 
@@ -158,7 +166,7 @@ module ActiveFacts
       end
 
       def inspect
-	"#{parent ? parent.inspect+'.' : ''}#{object_type.basename}"
+	"#{parent ? parent.inspect+'.' : ''}#{object_type ? object_type.basename : '<array>'}"
       end
 
       def tree
@@ -188,11 +196,9 @@ module ActiveFacts
       raise "Object Type #{sym} is not known" unless object_type
 
       hash = a.last.is_a?(Hash) ? a.pop : {}
-      options = hash.clone
-      name = options.has_key?(:as) ? options.delete(:as) : sym
 
-#      puts "#{indent}Compositing #{object_type.basename} as #{name} with options #{options.inspect}"
-      absorption = Absorption.new(@vocabulary, self, name.to_s, object_type, options)
+#      puts "#{indent}Compositing #{object_type.basename} as #{name} with options #{hash.inspect}"
+      absorption = Absorption.new(@vocabulary, self, name.to_s, object_type, hash)
       absorption.contents(nil, *a, &b)
     end
 
