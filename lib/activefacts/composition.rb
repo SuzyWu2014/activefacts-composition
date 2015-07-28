@@ -13,7 +13,6 @@ module ActiveFacts
   # A Composite is an Absorption, and an Absorption may have nested Absorptions.
   class Composition
     attr_reader :vocabulary
-    attr_reader :name
     attr_reader :members
 
     # Each absorption corresponds to one level of nesting
@@ -45,7 +44,7 @@ module ActiveFacts
 	  @role = parent.object_type.all_role(@name)
 	  @object_type = nil
 	elsif @object_type
-	  @name = @object_type.basename
+	  @name ||= @object_type.basename
 	else
 	  @role = parent.object_type.all_role(@name)
 	  @object_type = @role.unary? ? @vocabulary.object_type('ImplicitBooleanValueType') : @role.counterpart.object_type
@@ -197,8 +196,10 @@ module ActiveFacts
 
       hash = a.last.is_a?(Hash) ? a.pop : {}
 
+      name = hash[:name] || object_type.basename
+
 #      puts "#{indent}Compositing #{object_type.basename} as #{name} with options #{hash.inspect}"
-      absorption = Absorption.new(@vocabulary, self, name.to_s, object_type, hash)
+      absorption = Absorption.new(@vocabulary, self, name, object_type, hash)
       absorption.contents(nil, *a, &b)
     end
 
@@ -215,11 +216,11 @@ module ActiveFacts
     end
 
     def inspect
-      "#{name}"
+      "#{vocabulary.name}"
     end
 
     def tree
-      "#{name || vocabulary.name}\n"+
+      "#{vocabulary.name}\n"+
       members.map do |m|
 	m.tree
       end * "\n\n"
